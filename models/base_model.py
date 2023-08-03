@@ -1,82 +1,59 @@
-#!/usr/bin/python3
+#!/usr/bin/pyhon3
 """
-This module contains the BaseModel class which will be the base class for
-other classes.
+Parent class that will inherit
 """
-
-# We import the uuid module to generate unique IDs
 import uuid
-# We import the datetime module to manage dates and times
 from datetime import datetime
-import models
+from models import storage
 
 
 class BaseModel:
-    """
-    A base class that defines common attributes/methods for other classes.
+    """Defines all common attributes/methods
     """
 
     def __init__(self, *args, **kwargs):
+        """initializes all attributes
         """
-        This method is called when a new instance of the class is created.
-        If kwargs is not empty, assigns attributes based on kwargs.
-        Otherwise, assigns unique id and the current date/time.
-        """
-        # Generate a unique ID for the instance
-        self.id = str(uuid.uuid4())
-        # Get the current date and time for created_at
-        self.created_at = datetime.now()
-        # updated_at is the same as created_at when the instance is created
-        self.updated_at = self.created_at
-
-        if kwargs:  # Instance is created from dictionary
-            # Iterate through dictionary items
+        if not kwargs:
+            self.id = str(uuid.uuid4())
+            self.created_at = datetime.now()
+            self.updated_at = self.created_at
+            storage.new(self)
+        else:
+            f = "%Y-%m-%dT%H:%M:%S.%f"
             for key, value in kwargs.items():
-                # Convert string to datetime for these keys
                 if key == 'created_at' or key == 'updated_at':
-                    value = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f")
-                # Ignore the __class__ key
+                    value = datetime.strptime(kwargs[key], f)
                 if key != '__class__':
-                    # Set attribute on instance with key-value pair.
                     setattr(self, key, value)
 
-        else:
-            # Import storage and add the new object to it
-            models.storage.new(self)
-
     def __str__(self):
+        """returns class name, id and attribute dictionary
         """
-        This method returns a string representation of the instance.
-        """
-        # Return a formatted string containing the class name, the ID,
-        # and the dictionary of the instance attributes.
-        return f"[{self.__class__.__name__}] ({self.id}) {self.__dict__}"
+        class_name = "[" + self.__class__.__name__ + "]"
+        dct = {k: v for (k, v) in self.__dict__.items() if (not v) is False}
+        return class_name + " (" + self.id + ") " + str(dct)
 
     def save(self):
+        """updates last update time
         """
-        This method updates the 'updated_at' attribute with the current date
-        and time.
-        """
-        # Update the updated_at attribute
         self.updated_at = datetime.now()
-        # Save the instance to storage
-        models.storage.save()
+        storage.save()
 
     def to_dict(self):
+        """creates a new dictionary, adding a key and returning
+        datemtimes converted to strings
         """
-        This method returns a dictionary containing all keys/values of the
-        instance's __dict__.
-        """
+        new_dict = {}
 
-        # Make a copy of the __dict__ dictionary
-        dict_copy = self.__dict__.copy()
+        for key, values in self.__dict__.items():
+            if key == "created_at" or key == "updated_at":
+                new_dict[key] = values.strftime("%Y-%m-%dT%H:%M:%S.%f")
+            else:
+                if not values:
+                    pass
+                else:
+                    new_dict[key] = values
+        new_dict['__class__'] = self.__class__.__name__
 
-        # Add the class name to the dictionary
-        dict_copy["__class__"] = self.__class__.__name__
-
-        # Convert 'created_at' and 'updated_at' to strings in ISO format
-        dict_copy["created_at"] = self.created_at.isoformat()
-        dict_copy["updated_at"] = self.updated_at.isoformat()
-
-        # Return the dictionary
-        return dict_copy
+        return new_dict
