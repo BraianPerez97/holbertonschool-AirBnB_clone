@@ -1,66 +1,50 @@
 #!/usr/bin/python3
-"""This module defines a class "FileStorage" that serializes and
-deserializes instances to and from a JSON file."""
-
-import json  # We need json to convert dictionary to JSON string and vice versa
-import os    # import os module used for file path operations
-from models.user import User  # Import the User class
-from models.state import State  # Import the State class
-from models.city import City  # Import the City class
-from models.amenity import Amenity  # Import the Amenity class
-from models.place import Place  # Import the Place class
-from models.review import Review  # Import the Review class
+"""
+Class that serializes instances to a JSON file
+and deserializes JSON file to instances
+"""
+import json
+import os
 
 
 class FileStorage:
-    """A class to manage the storage of all our instances."""
-
-    __file_path = "file.json"  # Where we'll store and load our data
-    __objects = {}  # Here we will store all objects
+    """ Class that serializes and deserializes JSON objects """
+    __file_path = "file.json"
+    __objects = {}
 
     def all(self):
-        """Returns all objects."""
-        return self.__objects
+        """ Returns the dictionary __objects """
+        return FileStorage.__objects
 
     def new(self, obj):
-        """Adds a new object to our storage."""
-        # Create the key as <class name>.<id>
-        key = "{}.{}".format(obj.__class__.__name__, obj.id)
-        # Add object to dictionary
+        """ Sets in __objects the obj with key <obj class name >.id """
+        key = obj.__class__.__name__ + "." + obj.id
         FileStorage.__objects[key] = obj
 
     def save(self):
-        """Serializes our objects and saves them to a file."""
-        # Convert objects to dict representation
-        obj_dict = {k: v.to_dict() for k, v in self.__objects.items()}
-        # Open file in write mode
-        with open(self.__file_path, 'w') as f:
-            # Write dictionary to file as JSON
-            json.dump(obj_dict, f)
+        """ Serializes __objects to the JSON file """
+        dictionary = {}
+
+        for key, value in FileStorage.__objects.items():
+            dictionary[key] = value.to_dict()
+
+        with open(FileStorage.__file_path, 'w') as f:
+            json.dump(dictionary, f)
 
     def reload(self):
-        """
-        Deserialize the JSON file to __objects
-        """
-        # Check if file exists
-        if os.path.exists(self.__file_path):
-            # Open file in read mode
-            with open(self.__file_path, 'r') as f:
-                # Load JSON file to dictionary
-                obj_dict = json.load(f)
-            # Import BaseModel here to avoid circular import
-            from models.base_model import BaseModel
-            # Convert dict to objects and add them to __objects
-            class_map = {
-                'User': User,
-                'State': State,
-                'City': City,
-                'Amenity': Amenity,
-                'Place': Place,
-                'Review': Review
-            }
-            for k, v in obj_dict.item():
-                class_name = v['__class__']
-                if class_name in class_map:
-                    cls = class_map[class_name]
-                    self.__objects[k] = cls(**v)
+        """ Deserializes __objects from the JSON file """
+        from models.base_model import BaseModel
+        from models.user import User
+        from models.place import Place
+        from models.city import City
+        from models.amenity import Amenity
+        from models.state import State
+        from models.review import Review
+        dct = {'BaseModel': BaseModel, 'User': User, 'Place': Place,
+               'City': City, 'Amenity': Amenity, 'State': State,
+               'Review': Review}
+
+        if os.path.exists(FileStorage.__file_path) is True:
+            with open(FileStorage.__file_path, 'r') as f:
+                for key, value in json.load(f).items():
+                    self.new(dct[value['__class__']](**value))
